@@ -6,3 +6,19 @@ class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     nickname: str = Field()
     password: str = Field()
+
+class Wallet(SQLModel, table=True):
+    __tablename__ = 'wallet'
+    id: int | None = Field(default=None, primary_key=True)
+    money: int = Field(default=0)
+    user_id: int | None = Field(default=None, foreign_key= "users.id")
+
+
+class UserCreate(SQLModel):
+    nickname: str
+    password: str
+
+
+class UserPublic(SQLModel):
+    id: int
+    nickname: str
