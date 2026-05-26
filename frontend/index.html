@@ -38,13 +38,14 @@
           </div>
           <form class="login-form" id="loginForm">
             <input id="nicknameInput" type="text" placeholder="닉네임" autocomplete="username" />
-            <input id="userIdInput" type="number" min="1" placeholder="user_id" />
+            <input id="passwordInput" type="password" placeholder="비밀번호" autocomplete="current-password" />
             <button type="submit">로그인</button>
+            <button type="button" id="signupButton">회원가입</button>
           </form>
         </header>
 
         <section class="notice" id="notice">
-          현재 develop 브랜치에는 채팅 API만 실제 구현되어 있어요. 로그인과 게시글은 프론트 더미 데이터로 동작합니다.
+          로그인/게시글 API는 백엔드 서버와 연동하고, 채팅 API는 별도 채팅 서버 주소를 사용합니다.
         </section>
 
         <section class="view is-active" id="marketView">
@@ -53,7 +54,10 @@
               <p class="eyebrow">Marketplace</p>
               <h2>판매 게시글</h2>
             </div>
-            <button type="button" id="seedPostsButton">더미 게시글 초기화</button>
+            <div class="api-config">
+              <label for="apiBaseInput">Backend API</label>
+              <input id="apiBaseInput" type="url" value="http://localhost:8000" />
+            </div>
           </div>
 
           <div class="layout-grid">
@@ -82,7 +86,7 @@
             </div>
             <div class="api-config">
               <label for="chatApiInput">Chat API</label>
-              <input id="chatApiInput" type="url" value="http://localhost:8000" />
+              <input id="chatApiInput" type="url" value="http://localhost:8001" />
             </div>
           </div>
 
