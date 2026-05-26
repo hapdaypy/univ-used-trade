@@ -19,12 +19,17 @@ python -m http.server 5500
 
 ## 현재 연동 상태
 
+- 회원가입: `POST /auth/users`
+- 로그인: `POST /auth/token`
+- 현재 사용자 조회: `GET /auth/users/me/`
+- 게시글 목록: `GET /posts`
+- 게시글 작성: `POST /posts`
 - 채팅방 생성: `POST /api/chat/rooms`
 - 채팅방 목록: `GET /api/chat/rooms/{user_id}`
 - 실시간 채팅: `WS /api/chat/ws/{chat_room_id}/{user_id}`
 
-로그인과 게시글 API는 현재 백엔드 `develop`에 구현되어 있지 않아 프론트 내부 더미 데이터와 `localStorage`로 동작합니다.
+로그인과 게시글은 백엔드 API와 연동하고, 채팅은 별도 채팅 서비스 API와 연동합니다. API 연결이 실패하면 게시글 목록과 채팅방은 시연 가능한 fallback 데이터로 동작합니다.
 
 ## 백엔드 연동 전 확인할 점
 
-채팅 기능을 실제 API로 확인하려면 채팅 서비스가 `http://localhost:8000`에서 실행 중이어야 합니다. 화면 오른쪽 상단의 Chat API 입력값을 바꾸면 다른 주소의 채팅 서버에도 연결할 수 있습니다.
+백엔드 API는 기본값 `http://localhost:8000`, 채팅 API는 기본값 `http://localhost:8001`을 사용합니다. 화면의 API 입력값을 바꾸면 다른 주소의 서버에도 연결할 수 있습니다.

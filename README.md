@@ -28,28 +28,34 @@ http://localhost:5500
 
 ## 채팅 백엔드 실행 기준
 
-프론트엔드 채팅 화면은 기본적으로 아래 주소의 채팅 API를 호출합니다.
+프론트엔드는 백엔드 API와 채팅 API 주소를 분리해서 사용합니다.
 
 ```text
-http://localhost:8000
+Backend API: http://localhost:8000
+Chat API: http://localhost:8001
 ```
 
 연동 API는 다음과 같습니다.
 
+- `POST /auth/users`: 회원가입
+- `POST /auth/token`: 로그인 및 JWT 토큰 발급
+- `GET /auth/users/me/`: 현재 사용자 조회
+- `GET /posts`: 게시글 목록 조회
+- `POST /posts`: 게시글 작성
 - `POST /api/chat/rooms`: 채팅방 생성
 - `GET /api/chat/rooms/{user_id}`: 참여 중인 채팅방 목록 조회
 - `WS /api/chat/ws/{chat_room_id}/{user_id}`: 실시간 메시지 송수신
 
 ## 현재 프론트엔드 구현 범위
 
-- 로그인 사용자 입력 UI
-- 판매 게시글 목록 UI
-- 판매 게시글 작성 UI
+- 회원가입/로그인 API 연동 UI
+- 판매 게시글 목록 API 연동 UI
+- 판매 게시글 작성 API 연동 UI
 - 채팅방 생성 UI
 - 채팅방 목록 조회 UI
 - WebSocket 기반 실시간 채팅 UI
-- 백엔드 API 미연결 상황에서도 시연 가능한 localStorage 기반 더미 데이터
+- API 연결 실패 상황에서도 시연 가능한 localStorage 기반 fallback 데이터
 
 ## 참고 사항
 
-현재 `develop` 브랜치에는 채팅 API가 우선 구현되어 있으며, 로그인과 게시글 API는 아직 완성되지 않았습니다. 따라서 프론트엔드의 로그인과 게시글 기능은 더미 데이터 기반으로 동작하고, 추후 백엔드 API가 추가되면 `frontend/app.js`의 API 호출 함수만 교체하여 연동할 수 있습니다.
+채팅 서비스와 백엔드 API 서버는 모두 기본 Dockerfile에서 8000 포트를 사용하므로 동시에 실행할 때는 채팅 서비스를 8001 등 별도 포트로 실행해야 합니다.
