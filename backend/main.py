@@ -1,0 +1,17 @@
+from dotenv import load_dotenv
+load_dotenv()
+
+
+from fastapi import FastAPI
+from .auth.controller import router as auth_router
+from .posts.controller import router as posts_router
+
+app = FastAPI()
+
+app.include_router(auth_router)
+app.include_router(posts_router)
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+    
