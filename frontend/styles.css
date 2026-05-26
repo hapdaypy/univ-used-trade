@@ -163,9 +163,9 @@ textarea:focus {
 
 .login-form {
   display: grid;
-  grid-template-columns: 150px 110px auto;
+  grid-template-columns: 150px 150px auto auto;
   gap: 8px;
-  width: min(100%, 460px);
+  width: min(100%, 640px);
 }
 
 .notice {
