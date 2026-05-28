@@ -1,8 +1,8 @@
 from fastapi import HTTPException, status
 from sqlmodel import select
 
-from .model import Post, PostCreate
-from ..database.core import DBSession
+from posts.model import Post, PostCreate
+from database.core import DBSession
 
 
 def create_post(db: DBSession, post_create: PostCreate, seller_id: int) -> Post:

@@ -7,8 +7,8 @@ from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from datetime import datetime, timedelta, timezone
 
-from .model import User, UserCreate, Wallet, Token, TokenData
-from ..database.core import DBSession
+from auth.model import User, UserCreate, Wallet, Token, TokenData
+from database.core import DBSession
 
 SECRET_KEY = "a728846600dbfb087e4ee943d7e96c487a80af853d5f260fd9bdf8986ea7329d"
 ALGORITHM = "HS256"
