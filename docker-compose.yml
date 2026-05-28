@@ -1,12 +1,15 @@
+version: '3.8'
+
 services:
+  # 1. 데이터베이스
   trade-db:
     image: postgres:16-alpine
     container_name: trade-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-campus_db}
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
     ports:
       - "5432:5432"
     volumes:
@@ -15,10 +18,52 @@ services:
     networks:
       - trade-network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-user} -d ${DB_NAME:-campus_db}" ]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # 2. 메인 백엔드 (회원가입, 로그인, 게시글)
+  backend:
+    build: ./backend
+    container_name: backend-service
+    # 프론트엔드 기본값에 맞춰 내 컴퓨터의 8000 포트와 연결!
+    ports:
+      - "8000:8000"  
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@trade-db:5432/${DB_NAME:-campus_db}
+    depends_on:
+      trade-db:
+        condition: service_healthy
+    networks:
+      - trade-network
+
+  # 3. 채팅 서비스 (채팅방, 실시간 메시지)
+  chat-service:
+    build: ./chat-service
+    container_name: chat-service
+    # 프론트엔드 기본값에 맞춰 내 컴퓨터의 8001 포트를 컨테이너의 8000 포트로 연결!
+    ports:
+      - "8001:8000"  
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@trade-db:5432/${DB_NAME:-campus_db}
+    depends_on:
+      trade-db:
+        condition: service_healthy
+    networks:
+      - trade-network
+
+  # 4. 프론트엔드 화면
+  frontend:
+    build: ./frontend
+    container_name: frontend-service
+    ports:
+      - "5500:5500" # 내 컴퓨터의 5500번 포트로 브라우저 접속
+    depends_on:
+      - backend
+      - chat-service
+    networks:
+      - trade-network
 
 volumes:
   trade-db-data:
