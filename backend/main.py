@@ -4,8 +4,8 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .auth.controller import router as auth_router
-from .posts.controller import router as posts_router
+from auth.controller import router as auth_router
+from posts.controller import router as posts_router
 
 app = FastAPI()
 

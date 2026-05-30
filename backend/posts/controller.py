@@ -2,11 +2,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from . import service
-from .model import PostCreate, PostPublic
-from ..auth.model import User
-from ..auth.service import get_current_active_user
-from ..database.core import DBSession
+from posts import service
+from posts.model import PostCreate, PostPublic
+from auth.model import User
+from auth.service import get_current_active_user
+from database.core import DBSession
 
 
 router = APIRouter(

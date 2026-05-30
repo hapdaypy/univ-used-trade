@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from typing import Annotated
-from . import service
-from .model import User, UserCreate, UserPublic, Token
-from .service import *
-from ..database.core import DBSession
+from auth import service
+from auth.model import User, UserCreate, UserPublic, Token
+from auth.service import *
+from database.core import DBSession
 
 
 router = APIRouter(
