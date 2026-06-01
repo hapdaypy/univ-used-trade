@@ -7,7 +7,35 @@ from fastapi.middleware.cors import CORSMiddleware
 from auth.controller import router as auth_router
 from posts.controller import router as posts_router
 
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+import logging
+
 app = FastAPI()
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "data": None,
+            "message": "잘못된 요청 형식입니다."
+        }
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logging.error(f"서버 내부 오류: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "data": None,
+            "message": "서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+        }
+    )
 
 app.add_middleware(
     CORSMiddleware,
