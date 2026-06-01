@@ -18,6 +18,15 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 
 def create_user(db: DBSession, user_create: UserCreate) -> User:
+
+    # [추가된 부분] getUser 함수를 활용해서 중복 닉네임 확인
+    existing_user = getUser(db, user_create.nickname)
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="이미 존재하는 닉네임입니다."
+        )
+    
     user = User(nickname=user_create.nickname, password=user_create.password)
     db.add(user)
     db.flush()
