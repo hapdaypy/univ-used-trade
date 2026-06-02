@@ -13,6 +13,8 @@ const defaultPosts = [
     seller_id: 1,
     title: "운영체제 전공책 판매",
     content: "필기 조금 있고 상태 좋습니다. 공학관 앞에서 거래 가능해요.",
+    price: 18000,
+    status: "available",
     created_at: "2026-05-25T09:00:00",
   },
   {
@@ -20,6 +22,8 @@ const defaultPosts = [
     seller_id: 2,
     title: "무선 키보드",
     content: "프로젝트 기간에만 사용했습니다. 배터리 포함입니다.",
+    price: 25000,
+    status: "available",
     created_at: "2026-05-25T09:30:00",
   },
   {
@@ -27,6 +31,8 @@ const defaultPosts = [
     seller_id: 3,
     title: "기숙사용 미니 선풍기",
     content: "소음 적고 책상 위에 두기 좋습니다.",
+    price: 12000,
+    status: "sold",
     created_at: "2026-05-25T10:00:00",
   },
 ];
@@ -38,6 +44,8 @@ const state = {
   localRooms: loadJson(STORAGE_KEYS.rooms, []),
   activeRoom: null,
   socket: null,
+  wallet: null,
+  transactions: [],
 };
 
 const elements = {
@@ -49,10 +57,12 @@ const elements = {
   passwordInput: document.querySelector("#passwordInput"),
   currentNickname: document.querySelector("#currentNickname"),
   currentUserId: document.querySelector("#currentUserId"),
+  currentWallet: document.querySelector("#currentWallet"),
   apiBaseInput: document.querySelector("#apiBaseInput"),
   postForm: document.querySelector("#postForm"),
   postTitleInput: document.querySelector("#postTitleInput"),
   postContentInput: document.querySelector("#postContentInput"),
+  postPriceInput: document.querySelector("#postPriceInput"),
   postList: document.querySelector("#postList"),
   postCardTemplate: document.querySelector("#postCardTemplate"),
   chatApiInput: document.querySelector("#chatApiInput"),
@@ -67,6 +77,10 @@ const elements = {
   messageForm: document.querySelector("#messageForm"),
   messageInput: document.querySelector("#messageInput"),
   sendButton: document.querySelector("#sendButton"),
+  refreshPaymentButton: document.querySelector("#refreshPaymentButton"),
+  walletBalance: document.querySelector("#walletBalance"),
+  walletUserId: document.querySelector("#walletUserId"),
+  transactionList: document.querySelector("#transactionList"),
 };
 
 init();
@@ -83,6 +97,7 @@ function init() {
 
   if (state.token) {
     loadCurrentUser();
+    loadPaymentSummary();
   }
 }
 
@@ -118,6 +133,7 @@ function bindEvents() {
   });
 
   elements.loadRoomsButton.addEventListener("click", loadRooms);
+  elements.refreshPaymentButton.addEventListener("click", loadPaymentSummary);
 
   elements.messageForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -135,6 +151,10 @@ function switchView(viewId) {
 
   if (viewId === "chatView") {
     loadRooms();
+  }
+
+  if (viewId === "paymentView") {
+    loadPaymentSummary();
   }
 }
 
@@ -176,6 +196,7 @@ async function login() {
     state.token = token.access_token;
     localStorage.setItem(STORAGE_KEYS.token, state.token);
     await loadCurrentUser();
+    await loadPaymentSummary();
     setNotice("로그인되었습니다. 게시글 작성과 채팅을 사용할 수 있습니다.");
   } catch (error) {
     setNotice(`로그인 실패: ${error.message}`);
@@ -191,10 +212,14 @@ async function loadCurrentUser() {
     state.user = user;
     saveJson(STORAGE_KEYS.user, user);
     renderUser();
+    renderPosts();
   } catch (error) {
     state.token = "";
     localStorage.removeItem(STORAGE_KEYS.token);
+    state.wallet = null;
+    state.transactions = [];
     renderUser();
+    renderPayment();
   }
 }
 
@@ -214,6 +239,7 @@ function renderUser() {
   elements.nicknameInput.value = state.user?.nickname || elements.nicknameInput.value || "";
   elements.currentNickname.textContent = state.user?.nickname || "로그인 필요";
   elements.currentUserId.textContent = state.user?.id ? `user_id ${state.user.id}` : "user_id 없음";
+  elements.currentWallet.textContent = state.wallet ? `잔액 ${formatMoney(state.wallet.money)}` : "잔액 조회 전";
   elements.roomBuyerIdInput.value = state.user?.id || "";
 }
 
@@ -245,12 +271,18 @@ function renderPosts() {
     card.querySelector(".post-id").textContent = `POST #${post.id}`;
     card.querySelector("h3").textContent = post.title;
     card.querySelector("p").textContent = post.content || "내용 없음";
+    card.querySelector(".post-price").textContent = formatMoney(post.price || 0);
     card.querySelector(".post-meta").textContent = `seller_id ${post.seller_id} · ${formatDate(post.created_at)}`;
+    card.querySelector(".post-status").textContent = getPostStatusLabel(post.status);
+    card.querySelector(".post-status").classList.toggle("is-sold", post.status === "sold");
     card.querySelector(".open-chat-button").addEventListener("click", () => {
       switchView("chatView");
       elements.roomPostIdInput.value = post.id;
       elements.roomBuyerIdInput.value = state.user?.id || "";
     });
+    const buyButton = card.querySelector(".buy-button");
+    buyButton.disabled = !state.token || post.status === "sold" || Number(post.seller_id) === Number(state.user?.id);
+    buyButton.addEventListener("click", () => purchasePost(post));
     elements.postList.append(card);
   });
 }
@@ -264,7 +296,13 @@ async function createPost() {
   const payload = {
     title: elements.postTitleInput.value.trim(),
     content: elements.postContentInput.value.trim(),
+    price: Number(elements.postPriceInput.value),
   };
+
+  if (!payload.price || payload.price < 1) {
+    setNotice("가격은 1원 이상으로 입력해주세요.");
+    return;
+  }
 
   try {
     await apiRequest("/posts", {
@@ -279,8 +317,82 @@ async function createPost() {
     elements.postForm.reset();
     setNotice("게시글이 등록되었습니다.");
     await loadPosts();
+    await loadPaymentSummary();
   } catch (error) {
     setNotice(`게시글 등록 실패: ${error.message}`);
+  }
+}
+
+async function loadPaymentSummary() {
+  if (!state.token) {
+    state.wallet = null;
+    state.transactions = [];
+    renderUser();
+    renderPayment();
+    return;
+  }
+
+  try {
+    const [wallet, transactions] = await Promise.all([
+      apiRequest("/payment/wallet", { headers: authHeaders() }),
+      apiRequest("/payment/transactions", { headers: authHeaders() }),
+    ]);
+    state.wallet = wallet;
+    state.transactions = Array.isArray(transactions) ? transactions : [];
+    renderUser();
+    renderPayment();
+  } catch (error) {
+    setNotice(`결제 정보 조회 실패: ${error.message}`);
+    renderPayment();
+  }
+}
+
+function renderPayment() {
+  elements.walletBalance.textContent = state.wallet ? formatMoney(state.wallet.money) : "로그인 후 조회 가능";
+  elements.walletUserId.textContent = state.wallet ? `wallet #${state.wallet.id} · user_id ${state.wallet.user_id}` : "user_id 없음";
+  elements.transactionList.innerHTML = "";
+
+  if (!state.transactions.length) {
+    const empty = document.createElement("p");
+    empty.className = "eyebrow";
+    empty.textContent = "거래 내역이 없습니다.";
+    elements.transactionList.append(empty);
+    return;
+  }
+
+  state.transactions.forEach((transaction) => {
+    const item = document.createElement("article");
+    const isBuyer = Number(transaction.buyer_id) === Number(state.user?.id);
+    item.className = "transaction-item";
+    item.innerHTML = `
+      <strong>${isBuyer ? "구매" : "판매"} · ${formatMoney(transaction.amount)}</strong>
+      <span>post ${transaction.post_id} · buyer ${transaction.buyer_id} · seller ${transaction.seller_id}</span>
+      <time>${formatDate(transaction.created_at)}</time>
+    `;
+    elements.transactionList.append(item);
+  });
+}
+
+async function purchasePost(post) {
+  if (!state.token) {
+    setNotice("구매하려면 먼저 로그인해주세요.");
+    return;
+  }
+
+  try {
+    const transaction = await apiRequest("/payment/transactions", {
+      method: "POST",
+      headers: {
+        ...authHeaders(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ post_id: post.id }),
+    });
+
+    setNotice(`구매 완료: ${formatMoney(transaction.amount)} 결제되었습니다.`);
+    await Promise.all([loadPosts(), loadPaymentSummary()]);
+  } catch (error) {
+    setNotice(`구매 실패: ${error.message}`);
   }
 }
 
@@ -467,7 +579,10 @@ async function parseResponse(response) {
   const data = contentType.includes("application/json") ? await response.json() : await response.text();
 
   if (!response.ok) {
-    const message = typeof data === "string" ? data : data.detail || data.message || `HTTP ${response.status}`;
+    const message =
+      typeof data === "string"
+        ? data
+        : data.detail?.error?.message || data.detail?.message || data.detail || data.message || `HTTP ${response.status}`;
     throw new Error(message);
   }
 
@@ -549,6 +664,18 @@ function formatDate(value) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatMoney(value) {
+  return new Intl.NumberFormat("ko-KR", {
+    style: "currency",
+    currency: "KRW",
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
+
+function getPostStatusLabel(status) {
+  return status === "sold" ? "판매 완료" : "판매 중";
 }
 
 function escapeHtml(value) {
