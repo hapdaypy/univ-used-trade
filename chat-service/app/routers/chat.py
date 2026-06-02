@@ -19,6 +19,16 @@ async def create_chat_room(room_data: ChatRoomCreate, db: Session = Depends(get_
             status_code=404,
             detail={"success": False, "error": {"code": "POST_NOT_FOUND", "message": "존재하지 않는 상품 게시글입니다."}}
         )
+    
+    # 구매자(buyer_id)가 실제 users 테이블에 있는지 확인합니다.
+    buyer = db.query(models.User).filter(models.User.id == room_data.buyer_id).first()
+    
+    # 존재하지 않는 유저라면 404 에러를 발생시킵니다.
+    if not buyer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="존재하지 않는 사용자(구매자)입니다."
+        )
         
     # 2. Buyer ID가 Seller ID와 같은지 검증
     if room_data.buyer_id == post.seller_id:
