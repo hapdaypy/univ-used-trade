@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import chat
 
@@ -11,6 +11,27 @@ app = FastAPI(
     title="Campus Used Marketplace - Chatting Service",
     version="1.0.0"
 )
+
+def normalize_error_detail(detail):
+    if isinstance(detail, dict):
+        if "message" in detail:
+            return detail["message"], detail.get("data")
+        error = detail.get("error")
+        if isinstance(error, dict):
+            return error.get("message", "요청 처리 중 오류가 발생했습니다."), {"code": error.get("code")}
+    return str(detail), None
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    message, data = normalize_error_detail(exc.detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "data": data,
+            "message": message
+        }
+    )
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
