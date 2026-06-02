@@ -16,3 +16,13 @@ class MessagePayload(BaseModel):
     sender_id: int
     content: str
     created_at: datetime = Field(default_factory=datetime.now)
+
+
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class BaseResponse(BaseModel, Generic[T]):
+    success: bool
+    message: str
+    data: Optional[T] = None
