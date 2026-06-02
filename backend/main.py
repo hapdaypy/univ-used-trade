@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from auth.controller import router as auth_router
 from posts.controller import router as posts_router
+from payment.controller import router as payment_router
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -68,6 +69,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(posts_router)
+app.include_router(payment_router)
 
 @app.get("/")
 def read_root():

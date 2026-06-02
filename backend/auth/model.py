@@ -21,7 +21,7 @@ class User(SQLModel, table=True):
 class Wallet(SQLModel, table=True):
     __tablename__ = 'wallet'
     id: int | None = Field(default=None, primary_key=True)
-    money: int = Field(default=0)
+    money: int = Field(default=10000000)
     user_id: int | None = Field(default=None, foreign_key="users.id")
 
 
