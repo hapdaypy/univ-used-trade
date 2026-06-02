@@ -10,6 +10,7 @@ def create_post(db: DBSession, post_create: PostCreate, seller_id: int) -> Post:
         seller_id=seller_id,
         title=post_create.title,
         content=post_create.content,
+        price=post_create.price,
     )
     db.add(post)
     db.commit()
