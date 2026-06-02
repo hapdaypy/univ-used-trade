@@ -276,8 +276,41 @@ textarea:focus {
   margin-bottom: 12px;
 }
 
-.open-chat-button {
+.post-price {
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.post-status {
+  display: inline-flex;
+  border-radius: 999px;
+  background: #def3e9;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  padding: 6px 9px;
+}
+
+.post-status.is-sold {
+  background: #f3e1de;
+  color: var(--danger);
+}
+
+.open-chat-button,
+.buy-button {
   width: 100%;
+}
+
+.buy-button {
+  background: #263b31;
+  margin-top: 8px;
+}
+
+.buy-button:hover {
+  background: #17251e;
 }
 
 .api-config {
@@ -426,6 +459,56 @@ textarea:focus {
   gap: 18px;
 }
 
+.payment-layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.wallet-panel {
+  align-self: start;
+}
+
+.wallet-panel strong {
+  display: block;
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.wallet-panel span {
+  color: var(--muted);
+}
+
+.transaction-list {
+  display: grid;
+  gap: 10px;
+}
+
+.transaction-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  padding: 13px;
+}
+
+.transaction-item strong,
+.transaction-item span,
+.transaction-item time {
+  display: block;
+}
+
+.transaction-item span {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+.transaction-item time {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+
 .report-grid li {
   margin: 8px 0;
 }
@@ -442,6 +525,7 @@ textarea:focus {
 
   .layout-grid,
   .chat-layout,
+  .payment-layout,
   .report-grid {
     grid-template-columns: 1fr;
   }
