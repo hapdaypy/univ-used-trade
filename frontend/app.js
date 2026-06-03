@@ -77,6 +77,7 @@ const elements = {
   detailPrice: document.querySelector("#detailPrice"),
   detailMeta: document.querySelector("#detailMeta"),
   detailStatus: document.querySelector("#detailStatus"),
+  detailPurchaseHelp: document.querySelector("#detailPurchaseHelp"),
   detailChatButton: document.querySelector("#detailChatButton"),
   detailBuyButton: document.querySelector("#detailBuyButton"),
   backToMarketButton: document.querySelector("#backToMarketButton"),
@@ -347,7 +348,7 @@ function renderPosts() {
     });
     card.querySelector(".detail-button").addEventListener("click", () => openPostDetail(post));
     const buyButton = card.querySelector(".buy-button");
-    buyButton.disabled = !state.token || post.status === "sold" || Number(post.seller_id) === Number(state.user?.id);
+    configurePurchaseButton(buyButton, post);
     buyButton.addEventListener("click", () => purchasePost(post, buyButton));
     elements.postList.append(card);
   });
@@ -368,7 +369,8 @@ function renderPostDetail(post) {
   elements.detailMeta.textContent = `seller_id ${post.seller_id} · ${formatDate(post.created_at)}`;
   elements.detailStatus.textContent = getPostStatusLabel(post.status);
   elements.detailStatus.classList.toggle("is-sold", post.status === "sold");
-  elements.detailBuyButton.disabled = !state.token || post.status === "sold" || Number(post.seller_id) === Number(state.user?.id);
+  configurePurchaseButton(elements.detailBuyButton, post);
+  elements.detailPurchaseHelp.textContent = getPurchaseHelpText(post);
 }
 
 function openChatForPost(post) {
@@ -510,13 +512,16 @@ async function refreshAccountViews() {
 }
 
 async function purchasePost(post, button) {
-  if (!state.token) {
-    setNotice("구매하려면 먼저 로그인해주세요.");
+  const blockReason = getPurchaseBlockReason(post);
+  if (blockReason) {
+    setNotice(blockReason);
+    if (state.selectedPost?.id === post.id) {
+      renderPostDetail(post);
+    }
     return;
   }
 
   button.disabled = true;
-  const originalText = button.textContent;
   button.textContent = "구매 처리 중";
 
   try {
@@ -543,9 +548,47 @@ async function purchasePost(post, button) {
   } catch (error) {
     setNotice(`구매 실패: ${error.message}`);
   } finally {
-    button.textContent = originalText;
+    const latestPost = findPost(post.id) || post;
+    configurePurchaseButton(button, latestPost);
+    if (state.selectedPost?.id === latestPost.id) {
+      state.selectedPost = latestPost;
+      renderPostDetail(latestPost);
+    }
     renderPosts();
   }
+}
+
+function configurePurchaseButton(button, post) {
+  const blockReason = getPurchaseBlockReason(post);
+  button.disabled = Boolean(blockReason);
+  button.textContent = blockReason ? getBlockedPurchaseButtonText(post) : "구매하기";
+  button.title = blockReason || "가상머니로 결제합니다.";
+}
+
+function getPurchaseBlockReason(post) {
+  if (!state.token) {
+    return "구매하려면 먼저 로그인해주세요.";
+  }
+  if (post.status === "sold") {
+    return "이미 판매 완료된 상품입니다.";
+  }
+  if (Number(post.seller_id) === Number(state.user?.id)) {
+    return "본인이 등록한 상품은 구매할 수 없습니다. 발표 시연은 다른 계정으로 로그인해서 진행해주세요.";
+  }
+  return "";
+}
+
+function getBlockedPurchaseButtonText(post) {
+  if (!state.token) return "로그인 필요";
+  if (post.status === "sold") return "판매 완료";
+  if (Number(post.seller_id) === Number(state.user?.id)) return "내 상품";
+  return "구매 불가";
+}
+
+function getPurchaseHelpText(post) {
+  const blockReason = getPurchaseBlockReason(post);
+  if (blockReason) return blockReason;
+  return "구매하기를 누르면 채팅방 생성 후 가상머니가 차감되고 마이페이지에 구매 내역이 저장됩니다.";
 }
 
 async function ensureChatRoomForPurchase(post) {
