@@ -47,13 +47,17 @@ const state = {
   wallet: null,
   transactions: [],
   lastPurchase: null,
+  selectedPost: null,
 };
 
 const elements = {
+  authView: document.querySelector("#authView"),
+  appShell: document.querySelector("#appShell"),
   navTabs: document.querySelectorAll(".nav-tab"),
   views: document.querySelectorAll(".view"),
   loginForm: document.querySelector("#loginForm"),
   signupButton: document.querySelector("#signupButton"),
+  logoutButton: document.querySelector("#logoutButton"),
   nicknameInput: document.querySelector("#nicknameInput"),
   passwordInput: document.querySelector("#passwordInput"),
   currentNickname: document.querySelector("#currentNickname"),
@@ -66,6 +70,16 @@ const elements = {
   postPriceInput: document.querySelector("#postPriceInput"),
   postList: document.querySelector("#postList"),
   postCardTemplate: document.querySelector("#postCardTemplate"),
+  detailTitle: document.querySelector("#detailTitle"),
+  detailPostId: document.querySelector("#detailPostId"),
+  detailName: document.querySelector("#detailName"),
+  detailContent: document.querySelector("#detailContent"),
+  detailPrice: document.querySelector("#detailPrice"),
+  detailMeta: document.querySelector("#detailMeta"),
+  detailStatus: document.querySelector("#detailStatus"),
+  detailChatButton: document.querySelector("#detailChatButton"),
+  detailBuyButton: document.querySelector("#detailBuyButton"),
+  backToMarketButton: document.querySelector("#backToMarketButton"),
   chatApiInput: document.querySelector("#chatApiInput"),
   roomForm: document.querySelector("#roomForm"),
   roomPostIdInput: document.querySelector("#roomPostIdInput"),
@@ -94,6 +108,7 @@ function init() {
   elements.chatApiInput.value = localStorage.getItem(STORAGE_KEYS.chatApiBase) || elements.chatApiInput.value;
 
   bindEvents();
+  renderAuthState();
   renderUser();
   renderPosts();
   renderRooms(state.localRooms);
@@ -125,6 +140,7 @@ function bindEvents() {
   });
 
   elements.signupButton.addEventListener("click", signup);
+  elements.logoutButton.addEventListener("click", logout);
 
   elements.postForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -139,6 +155,15 @@ function bindEvents() {
   elements.loadRoomsButton.addEventListener("click", loadRooms);
   elements.refreshPaymentButton.addEventListener("click", loadPaymentSummary);
   elements.refreshMyPageButton.addEventListener("click", refreshAccountViews);
+  elements.backToMarketButton.addEventListener("click", () => switchView("marketView"));
+  elements.detailChatButton.addEventListener("click", () => {
+    if (!state.selectedPost) return;
+    openChatForPost(state.selectedPost);
+  });
+  elements.detailBuyButton.addEventListener("click", () => {
+    if (!state.selectedPost) return;
+    purchasePost(state.selectedPost, elements.detailBuyButton);
+  });
 
   elements.messageForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -165,6 +190,12 @@ function switchView(viewId) {
   if (viewId === "myPageView") {
     refreshAccountViews();
   }
+}
+
+function renderAuthState() {
+  const isAuthenticated = Boolean(state.token && state.user);
+  elements.authView.classList.toggle("is-hidden", isAuthenticated);
+  elements.appShell.classList.toggle("is-hidden", !isAuthenticated);
 }
 
 async function signup() {
@@ -206,6 +237,8 @@ async function login() {
     localStorage.setItem(STORAGE_KEYS.token, state.token);
     await loadCurrentUser();
     await loadPaymentSummary();
+    renderAuthState();
+    switchView("marketView");
     setNotice("로그인되었습니다. 게시글 작성과 채팅을 사용할 수 있습니다.");
   } catch (error) {
     setNotice(`로그인 실패: ${error.message}`);
@@ -222,6 +255,7 @@ async function loadCurrentUser() {
     saveJson(STORAGE_KEYS.user, user);
     renderUser();
     renderPosts();
+    renderAuthState();
   } catch (error) {
     state.token = "";
     localStorage.removeItem(STORAGE_KEYS.token);
@@ -231,7 +265,29 @@ async function loadCurrentUser() {
     renderUser();
     renderPayment();
     renderMyPage();
+    renderAuthState();
   }
+}
+
+function logout() {
+  closeSocket();
+  state.user = null;
+  state.token = "";
+  state.wallet = null;
+  state.transactions = [];
+  state.localRooms = [];
+  state.activeRoom = null;
+  state.selectedPost = null;
+  state.lastPurchase = null;
+  localStorage.removeItem(STORAGE_KEYS.user);
+  localStorage.removeItem(STORAGE_KEYS.token);
+  localStorage.removeItem(STORAGE_KEYS.rooms);
+  elements.passwordInput.value = "";
+  renderUser();
+  renderPayment();
+  renderMyPage();
+  renderRooms([]);
+  renderAuthState();
 }
 
 function getCredentials() {
@@ -287,15 +343,38 @@ function renderPosts() {
     card.querySelector(".post-status").textContent = getPostStatusLabel(post.status);
     card.querySelector(".post-status").classList.toggle("is-sold", post.status === "sold");
     card.querySelector(".open-chat-button").addEventListener("click", () => {
-      switchView("chatView");
-      elements.roomPostIdInput.value = post.id;
-      elements.roomBuyerIdInput.value = state.user?.id || "";
+      openChatForPost(post);
     });
+    card.querySelector(".detail-button").addEventListener("click", () => openPostDetail(post));
     const buyButton = card.querySelector(".buy-button");
     buyButton.disabled = !state.token || post.status === "sold" || Number(post.seller_id) === Number(state.user?.id);
     buyButton.addEventListener("click", () => purchasePost(post, buyButton));
     elements.postList.append(card);
   });
+}
+
+function openPostDetail(post) {
+  state.selectedPost = post;
+  renderPostDetail(post);
+  switchView("itemDetailView");
+}
+
+function renderPostDetail(post) {
+  elements.detailTitle.textContent = post.title;
+  elements.detailPostId.textContent = `POST #${post.id}`;
+  elements.detailName.textContent = post.title;
+  elements.detailContent.textContent = post.content || "내용 없음";
+  elements.detailPrice.textContent = formatMoney(post.price || 0);
+  elements.detailMeta.textContent = `seller_id ${post.seller_id} · ${formatDate(post.created_at)}`;
+  elements.detailStatus.textContent = getPostStatusLabel(post.status);
+  elements.detailStatus.classList.toggle("is-sold", post.status === "sold");
+  elements.detailBuyButton.disabled = !state.token || post.status === "sold" || Number(post.seller_id) === Number(state.user?.id);
+}
+
+function openChatForPost(post) {
+  switchView("chatView");
+  elements.roomPostIdInput.value = post.id;
+  elements.roomBuyerIdInput.value = state.user?.id || "";
 }
 
 async function createPost() {
@@ -453,6 +532,11 @@ async function purchasePost(post, button) {
 
     state.lastPurchase = transaction;
     await Promise.all([loadPosts(), loadPaymentSummary(), loadRooms()]);
+    const refreshedPost = findPost(post.id);
+    if (refreshedPost && state.selectedPost?.id === refreshedPost.id) {
+      state.selectedPost = refreshedPost;
+      renderPostDetail(refreshedPost);
+    }
     renderMyPage();
     switchView("myPageView");
     setNotice(`구매 완료: ${formatMoney(transaction.amount)}가 가상머니에서 차감되었습니다. 마이페이지에서 구매한 물건을 확인하세요.`);

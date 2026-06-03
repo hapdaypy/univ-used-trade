@@ -7,7 +7,27 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="app-shell">
+    <section class="auth-screen" id="authView">
+      <div class="auth-panel">
+        <div class="brand auth-brand">
+          <div class="brand-mark">C</div>
+          <div>
+            <strong>Campus Market</strong>
+            <span>중고거래 플랫폼</span>
+          </div>
+        </div>
+        <p class="eyebrow">Sign In</p>
+        <h1>로그인 후 중고거래를 시작하세요</h1>
+        <form class="auth-form" id="loginForm">
+          <input id="nicknameInput" type="text" placeholder="닉네임" autocomplete="username" />
+          <input id="passwordInput" type="password" placeholder="비밀번호" autocomplete="current-password" />
+          <button type="submit">로그인</button>
+          <button type="button" id="signupButton">회원가입</button>
+        </form>
+      </div>
+    </section>
+
+    <div class="app-shell is-hidden" id="appShell">
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">C</div>
@@ -30,6 +50,7 @@
           <strong id="currentNickname">게스트</strong>
           <span id="currentUserId">user_id 없음</span>
           <span id="currentWallet">잔액 조회 전</span>
+          <button class="logout-button" type="button" id="logoutButton">로그아웃</button>
         </section>
       </aside>
 
@@ -39,12 +60,6 @@
             <p class="eyebrow">FastAPI + JavaScript</p>
             <h1>캠퍼스 중고거래 프론트엔드</h1>
           </div>
-          <form class="login-form" id="loginForm">
-            <input id="nicknameInput" type="text" placeholder="닉네임" autocomplete="username" />
-            <input id="passwordInput" type="password" placeholder="비밀번호" autocomplete="current-password" />
-            <button type="submit">로그인</button>
-            <button type="button" id="signupButton">회원가입</button>
-          </form>
         </header>
 
         <section class="notice" id="notice">
@@ -83,6 +98,32 @@
 
             <div class="post-list" id="postList" aria-live="polite"></div>
           </div>
+        </section>
+
+        <section class="view" id="itemDetailView">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Item Detail</p>
+              <h2 id="detailTitle">상품 상세</h2>
+            </div>
+            <button type="button" id="backToMarketButton">목록으로</button>
+          </div>
+
+          <article class="detail-panel panel">
+            <div class="detail-visual"></div>
+            <div class="detail-body">
+              <span class="post-id" id="detailPostId"></span>
+              <h3 id="detailName"></h3>
+              <p id="detailContent"></p>
+              <strong class="detail-price" id="detailPrice"></strong>
+              <div class="post-meta" id="detailMeta"></div>
+              <span class="post-status" id="detailStatus"></span>
+              <div class="detail-actions">
+                <button type="button" id="detailChatButton">채팅하기</button>
+                <button type="button" id="detailBuyButton">구매하기</button>
+              </div>
+            </div>
+          </article>
         </section>
 
         <section class="view" id="paymentView">
@@ -227,6 +268,7 @@
           <div class="post-meta"></div>
           <span class="post-status"></span>
           <button type="button" class="open-chat-button">채팅하기</button>
+          <button type="button" class="detail-button">상세보기</button>
           <button type="button" class="buy-button">구매하기</button>
         </div>
       </article>

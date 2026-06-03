@@ -67,6 +67,44 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(20, 122, 92, 0.12);
 }
 
+.is-hidden {
+  display: none !important;
+}
+
+.auth-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-panel {
+  width: min(100%, 460px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 30px;
+}
+
+.auth-brand {
+  color: var(--text);
+  margin-bottom: 28px;
+}
+
+.auth-brand span {
+  color: var(--muted);
+}
+
+.auth-panel h1 {
+  margin: 0 0 20px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 10px;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -133,6 +171,16 @@ textarea:focus {
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   padding: 16px;
+}
+
+.logout-button {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  margin-top: 14px;
+}
+
+.logout-button:hover {
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .main {
@@ -300,8 +348,19 @@ textarea:focus {
 }
 
 .open-chat-button,
+.detail-button,
 .buy-button {
   width: 100%;
+}
+
+.detail-button {
+  background: #eef4f1;
+  color: var(--text);
+  margin-top: 8px;
+}
+
+.detail-button:hover {
+  background: #dbe9e2;
 }
 
 .buy-button {
@@ -459,6 +518,48 @@ textarea:focus {
   gap: 18px;
 }
 
+.detail-panel {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1fr);
+  gap: 22px;
+}
+
+.detail-visual {
+  min-height: 360px;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(20, 122, 92, 0.85), rgba(240, 180, 76, 0.78)),
+    repeating-linear-gradient(45deg, transparent 0 14px, rgba(255, 255, 255, 0.18) 14px 28px);
+}
+
+.detail-body {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.detail-body h3 {
+  font-size: 28px;
+  margin: 0;
+}
+
+.detail-body p {
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.detail-price {
+  font-size: 30px;
+}
+
+.detail-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
 .payment-layout,
 .my-page-layout {
   display: grid;
@@ -535,6 +636,7 @@ textarea:focus {
   }
 
   .layout-grid,
+  .detail-panel,
   .chat-layout,
   .payment-layout,
   .my-page-layout,
