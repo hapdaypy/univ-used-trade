@@ -21,6 +21,7 @@
           <button class="nav-tab is-active" type="button" data-view="marketView">게시글</button>
           <button class="nav-tab" type="button" data-view="chatView">채팅</button>
           <button class="nav-tab" type="button" data-view="paymentView">결제</button>
+          <button class="nav-tab" type="button" data-view="myPageView">마이페이지</button>
           <button class="nav-tab" type="button" data-view="projectView">프로젝트</button>
         </nav>
 
@@ -109,6 +110,31 @@
           </div>
         </section>
 
+        <section class="view" id="myPageView">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">My Page</p>
+              <h2>내 구매 현황</h2>
+            </div>
+            <button type="button" id="refreshMyPageButton">새로고침</button>
+          </div>
+
+          <div class="my-page-layout">
+            <section class="panel purchase-summary" id="purchaseSummary">
+              <p class="eyebrow">최근 구매</p>
+              <strong>아직 구매 내역이 없습니다.</strong>
+              <span>구매가 완료되면 이곳에 표시됩니다.</span>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <h3>구매한 물건</h3>
+              </div>
+              <div class="purchase-list" id="purchaseList"></div>
+            </section>
+          </div>
+        </section>
+
         <section class="view" id="chatView">
           <div class="section-head">
             <div>
@@ -172,6 +198,7 @@
                 <li>WebSocket 기반 실시간 메시지 송수신 UI</li>
                 <li>지갑 조회 및 결제 API 연동</li>
                 <li>거래 내역 조회 UI</li>
+                <li>마이페이지 구매 내역 UI</li>
               </ul>
             </article>
             <article class="panel">
