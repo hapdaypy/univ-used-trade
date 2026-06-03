@@ -46,6 +46,7 @@ const state = {
   socket: null,
   wallet: null,
   transactions: [],
+  lastPurchase: null,
 };
 
 const elements = {
@@ -81,6 +82,9 @@ const elements = {
   walletBalance: document.querySelector("#walletBalance"),
   walletUserId: document.querySelector("#walletUserId"),
   transactionList: document.querySelector("#transactionList"),
+  refreshMyPageButton: document.querySelector("#refreshMyPageButton"),
+  purchaseSummary: document.querySelector("#purchaseSummary"),
+  purchaseList: document.querySelector("#purchaseList"),
 };
 
 init();
@@ -134,6 +138,7 @@ function bindEvents() {
 
   elements.loadRoomsButton.addEventListener("click", loadRooms);
   elements.refreshPaymentButton.addEventListener("click", loadPaymentSummary);
+  elements.refreshMyPageButton.addEventListener("click", refreshAccountViews);
 
   elements.messageForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -155,6 +160,10 @@ function switchView(viewId) {
 
   if (viewId === "paymentView") {
     loadPaymentSummary();
+  }
+
+  if (viewId === "myPageView") {
+    refreshAccountViews();
   }
 }
 
@@ -218,8 +227,10 @@ async function loadCurrentUser() {
     localStorage.removeItem(STORAGE_KEYS.token);
     state.wallet = null;
     state.transactions = [];
+    state.lastPurchase = null;
     renderUser();
     renderPayment();
+    renderMyPage();
   }
 }
 
@@ -282,7 +293,7 @@ function renderPosts() {
     });
     const buyButton = card.querySelector(".buy-button");
     buyButton.disabled = !state.token || post.status === "sold" || Number(post.seller_id) === Number(state.user?.id);
-    buyButton.addEventListener("click", () => purchasePost(post));
+    buyButton.addEventListener("click", () => purchasePost(post, buyButton));
     elements.postList.append(card);
   });
 }
@@ -341,9 +352,11 @@ async function loadPaymentSummary() {
     state.transactions = Array.isArray(transactions) ? transactions : [];
     renderUser();
     renderPayment();
+    renderMyPage();
   } catch (error) {
     setNotice(`결제 정보 조회 실패: ${error.message}`);
     renderPayment();
+    renderMyPage();
   }
 }
 
@@ -373,13 +386,62 @@ function renderPayment() {
   });
 }
 
-async function purchasePost(post) {
+function renderMyPage() {
+  const purchases = state.transactions.filter((transaction) => Number(transaction.buyer_id) === Number(state.user?.id));
+  elements.purchaseList.innerHTML = "";
+
+  if (state.lastPurchase) {
+    const post = findPost(state.lastPurchase.post_id);
+    elements.purchaseSummary.innerHTML = `
+      <p class="eyebrow">최근 구매 완료</p>
+      <strong>${escapeHtml(post?.title || `POST #${state.lastPurchase.post_id}`)}</strong>
+      <span>${formatMoney(state.lastPurchase.amount)} 결제 · 현재 잔액 ${state.wallet ? formatMoney(state.wallet.money) : "조회 전"}</span>
+    `;
+  } else {
+    elements.purchaseSummary.innerHTML = `
+      <p class="eyebrow">최근 구매</p>
+      <strong>아직 구매 내역이 없습니다.</strong>
+      <span>구매가 완료되면 이곳에 표시됩니다.</span>
+    `;
+  }
+
+  if (!purchases.length) {
+    const empty = document.createElement("p");
+    empty.className = "eyebrow";
+    empty.textContent = "구매한 물건이 없습니다.";
+    elements.purchaseList.append(empty);
+    return;
+  }
+
+  purchases.forEach((transaction) => {
+    const post = findPost(transaction.post_id);
+    const item = document.createElement("article");
+    item.className = "purchase-item";
+    item.innerHTML = `
+      <strong>${escapeHtml(post?.title || `POST #${transaction.post_id}`)}</strong>
+      <span>${escapeHtml(post?.content || "상품 정보 없음")}</span>
+      <div>${formatMoney(transaction.amount)} · seller ${transaction.seller_id} · ${formatDate(transaction.created_at)}</div>
+    `;
+    elements.purchaseList.append(item);
+  });
+}
+
+async function refreshAccountViews() {
+  await Promise.all([loadPosts(), loadPaymentSummary()]);
+}
+
+async function purchasePost(post, button) {
   if (!state.token) {
     setNotice("구매하려면 먼저 로그인해주세요.");
     return;
   }
 
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "구매 처리 중";
+
   try {
+    await ensureChatRoomForPurchase(post);
     const transaction = await apiRequest("/payment/transactions", {
       method: "POST",
       headers: {
@@ -389,11 +451,41 @@ async function purchasePost(post) {
       body: JSON.stringify({ post_id: post.id }),
     });
 
-    setNotice(`구매 완료: ${formatMoney(transaction.amount)} 결제되었습니다.`);
-    await Promise.all([loadPosts(), loadPaymentSummary()]);
+    state.lastPurchase = transaction;
+    await Promise.all([loadPosts(), loadPaymentSummary(), loadRooms()]);
+    renderMyPage();
+    switchView("myPageView");
+    setNotice(`구매 완료: ${formatMoney(transaction.amount)}가 가상머니에서 차감되었습니다. 마이페이지에서 구매한 물건을 확인하세요.`);
   } catch (error) {
     setNotice(`구매 실패: ${error.message}`);
+  } finally {
+    button.textContent = originalText;
+    renderPosts();
   }
+}
+
+async function ensureChatRoomForPurchase(post) {
+  const existingRoom = state.localRooms.find((room) => {
+    return Number(room.posts_id) === Number(post.id) && Number(room.buyer_id) === Number(state.user?.id) && !room.localOnly;
+  });
+
+  if (existingRoom) {
+    return existingRoom;
+  }
+
+  const response = await chatRequest("/api/chat/rooms", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ posts_id: post.id, buyer_id: state.user.id }),
+  });
+
+  if (!response.success) {
+    throw new Error(response.message || "채팅방 생성 실패");
+  }
+
+  upsertLocalRoom(response.data);
+  renderRooms(state.localRooms);
+  return response.data;
 }
 
 async function createRoomFromForm() {
@@ -619,7 +711,11 @@ function getChatApiBase() {
 }
 
 function findSellerId(postsId) {
-  return state.posts.find((post) => Number(post.id) === Number(postsId))?.seller_id ?? null;
+  return findPost(postsId)?.seller_id ?? null;
+}
+
+function findPost(postsId) {
+  return state.posts.find((post) => Number(post.id) === Number(postsId)) ?? null;
 }
 
 function upsertLocalRoom(room) {

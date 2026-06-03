@@ -459,32 +459,38 @@ textarea:focus {
   gap: 18px;
 }
 
-.payment-layout {
+.payment-layout,
+.my-page-layout {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
   gap: 18px;
 }
 
-.wallet-panel {
+.wallet-panel,
+.purchase-summary {
   align-self: start;
 }
 
-.wallet-panel strong {
+.wallet-panel strong,
+.purchase-summary strong {
   display: block;
   font-size: 28px;
   margin-bottom: 8px;
 }
 
-.wallet-panel span {
+.wallet-panel span,
+.purchase-summary span {
   color: var(--muted);
 }
 
-.transaction-list {
+.transaction-list,
+.purchase-list {
   display: grid;
   gap: 10px;
 }
 
-.transaction-item {
+.transaction-item,
+.purchase-item {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-muted);
@@ -493,11 +499,16 @@ textarea:focus {
 
 .transaction-item strong,
 .transaction-item span,
-.transaction-item time {
+.transaction-item time,
+.purchase-item strong,
+.purchase-item span,
+.purchase-item div {
   display: block;
 }
 
-.transaction-item span {
+.transaction-item span,
+.purchase-item span,
+.purchase-item div {
   color: var(--muted);
   font-size: 13px;
   margin-top: 5px;
@@ -526,6 +537,7 @@ textarea:focus {
   .layout-grid,
   .chat-layout,
   .payment-layout,
+  .my-page-layout,
   .report-grid {
     grid-template-columns: 1fr;
   }
