@@ -441,7 +441,7 @@ textarea:focus {
 
 .chat-panel {
   display: grid;
-  grid-template-rows: auto minmax(360px, 58vh) auto;
+  grid-template-rows: auto auto minmax(320px, 52vh) auto;
   padding: 0;
 }
 
@@ -468,6 +468,27 @@ textarea:focus {
 .connection.is-error {
   background: #fde8e6;
   color: var(--danger);
+}
+
+.chat-purchase {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  background: #fffaf0;
+  padding: 14px 18px;
+}
+
+.chat-purchase strong,
+.chat-purchase span {
+  display: block;
+}
+
+.chat-purchase span {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
 }
 
 .message-list {
