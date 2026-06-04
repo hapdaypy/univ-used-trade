@@ -595,6 +595,20 @@ textarea:focus {
   color: var(--muted);
 }
 
+.receipt-meta {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.receipt-meta span {
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 7px 9px;
+}
+
 .transaction-list,
 .purchase-list {
   display: grid;

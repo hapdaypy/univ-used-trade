@@ -38,8 +38,8 @@ const defaultPosts = [
 ];
 
 const state = {
-  user: loadJson(STORAGE_KEYS.user, null),
-  token: localStorage.getItem(STORAGE_KEYS.token) || "",
+  user: null,
+  token: "",
   posts: loadJson(STORAGE_KEYS.posts, defaultPosts),
   localRooms: loadJson(STORAGE_KEYS.rooms, []),
   activeRoom: null,
@@ -237,6 +237,7 @@ async function login() {
     state.token = token.access_token;
     localStorage.setItem(STORAGE_KEYS.token, state.token);
     await loadCurrentUser();
+    await loadPosts();
     await loadPaymentSummary();
     renderAuthState();
     switchView("marketView");
@@ -469,14 +470,21 @@ function renderPayment() {
 
 function renderMyPage() {
   const purchases = state.transactions.filter((transaction) => Number(transaction.buyer_id) === Number(state.user?.id));
+  const latestPurchase = state.lastPurchase || getLatestPurchase(purchases);
   elements.purchaseList.innerHTML = "";
 
-  if (state.lastPurchase) {
-    const post = findPost(state.lastPurchase.post_id);
+  if (latestPurchase) {
+    const post = findPost(latestPurchase.post_id);
     elements.purchaseSummary.innerHTML = `
-      <p class="eyebrow">최근 구매 완료</p>
-      <strong>${escapeHtml(post?.title || `POST #${state.lastPurchase.post_id}`)}</strong>
-      <span>${formatMoney(state.lastPurchase.amount)} 결제 · 현재 잔액 ${state.wallet ? formatMoney(state.wallet.money) : "조회 전"}</span>
+      <p class="eyebrow">최근 결제 완료</p>
+      <strong>${escapeHtml(getTransactionPostTitle(latestPurchase, post))}</strong>
+      <span>${formatMoney(latestPurchase.amount)} 결제 · 현재 잔액 ${state.wallet ? formatMoney(state.wallet.money) : "조회 전"}</span>
+      <div class="receipt-meta">
+        <span>transaction #${latestPurchase.id}</span>
+        <span>post #${latestPurchase.post_id}</span>
+        <span>seller ${latestPurchase.seller_id}</span>
+        <span>${formatDate(latestPurchase.created_at)}</span>
+      </div>
     `;
   } else {
     elements.purchaseSummary.innerHTML = `
@@ -499,12 +507,27 @@ function renderMyPage() {
     const item = document.createElement("article");
     item.className = "purchase-item";
     item.innerHTML = `
-      <strong>${escapeHtml(post?.title || `POST #${transaction.post_id}`)}</strong>
-      <span>${escapeHtml(post?.content || "상품 정보 없음")}</span>
-      <div>${formatMoney(transaction.amount)} · seller ${transaction.seller_id} · ${formatDate(transaction.created_at)}</div>
+      <strong>${escapeHtml(getTransactionPostTitle(transaction, post))}</strong>
+      <span>${escapeHtml(getTransactionPostContent(transaction, post))}</span>
+      <div>결제 ${formatMoney(transaction.amount)} · transaction #${transaction.id} · seller ${transaction.seller_id} · ${formatDate(transaction.created_at)}</div>
     `;
     elements.purchaseList.append(item);
   });
+}
+
+function getTransactionPostTitle(transaction, post) {
+  return transaction.post_title || post?.title || `POST #${transaction.post_id}`;
+}
+
+function getTransactionPostContent(transaction, post) {
+  return transaction.post_content || post?.content || "상품 정보 없음";
+}
+
+function getLatestPurchase(purchases) {
+  return [...purchases].sort((a, b) => {
+    const dateDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    return dateDiff || Number(b.id || 0) - Number(a.id || 0);
+  })[0] || null;
 }
 
 async function refreshAccountViews() {
@@ -525,7 +548,9 @@ async function purchasePost(post, button) {
   button.textContent = "구매 처리 중";
 
   try {
-    await ensureChatRoomForPurchase(post);
+    await ensureChatRoomForPurchase(post).catch((error) => {
+      setConnectionStatus(`채팅방 생성 대기: ${error.message}`, "error");
+    });
     const transaction = await apiRequest("/payment/transactions", {
       method: "POST",
       headers: {
@@ -560,7 +585,8 @@ async function purchasePost(post, button) {
 
 function configurePurchaseButton(button, post) {
   const blockReason = getPurchaseBlockReason(post);
-  button.disabled = Boolean(blockReason);
+  const isSold = post.status === "sold";
+  button.disabled = isSold;
   button.textContent = blockReason ? getBlockedPurchaseButtonText(post) : "구매하기";
   button.title = blockReason || "가상머니로 결제합니다.";
 }
