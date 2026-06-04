@@ -3,7 +3,7 @@ from sqlmodel import select, text
 
 from auth.model import Wallet
 from posts.model import Post
-from payment.model import Transaction, PurchaseRequest
+from payment.model import Transaction, PurchaseRequest, TransactionPublic
 from database.core import DBSession
 
 
@@ -15,7 +15,7 @@ def get_my_wallet(db: DBSession, user_id: int) -> Wallet:
 
 
 
-def purchase(db: DBSession, buyer_id: int, req: PurchaseRequest) -> Transaction:
+def purchase(db: DBSession, buyer_id: int, req: PurchaseRequest) -> TransactionPublic:
     post = db.get(Post, req.post_id)
     if post is None:
         raise HTTPException(status_code=404, detail="게시글이 없습니다.")
@@ -29,7 +29,10 @@ def purchase(db: DBSession, buyer_id: int, req: PurchaseRequest) -> Transaction:
         {"post_id": req.post_id, "buyer_id": buyer_id}
     ).first()
     if chat_room is None:
-        raise HTTPException(status_code=400, detail="채팅방 개설 후 구매할 수 있습니다.")
+        db.execute(
+            text("INSERT INTO chat_rooms (posts_id, buyer_id) VALUES (:post_id, :buyer_id)"),
+            {"post_id": req.post_id, "buyer_id": buyer_id},
+        )
 
     buyer_wallet = get_my_wallet(db, buyer_id)
     if buyer_wallet.money < post.price:
@@ -54,12 +57,32 @@ def purchase(db: DBSession, buyer_id: int, req: PurchaseRequest) -> Transaction:
     db.add(transaction)
     db.commit()
     db.refresh(transaction)
-    return transaction
+    return to_transaction_public(transaction, post)
 
 
-def get_my_transactions(db: DBSession, user_id: int) -> list[Transaction]:
-    return db.exec(
+def get_my_transactions(db: DBSession, user_id: int) -> list[TransactionPublic]:
+    transactions = db.exec(
         select(Transaction).where(
             (Transaction.buyer_id == user_id) | (Transaction.seller_id == user_id)
         )
     ).all()
+    posts = {
+        post.id: post
+        for post in db.exec(
+            select(Post).where(Post.id.in_([transaction.post_id for transaction in transactions]))
+        ).all()
+    } if transactions else {}
+    return [to_transaction_public(transaction, posts.get(transaction.post_id)) for transaction in transactions]
+
+
+def to_transaction_public(transaction: Transaction, post: Post | None) -> TransactionPublic:
+    return TransactionPublic(
+        id=transaction.id,
+        post_id=transaction.post_id,
+        buyer_id=transaction.buyer_id,
+        seller_id=transaction.seller_id,
+        amount=transaction.amount,
+        created_at=transaction.created_at,
+        post_title=post.title if post else None,
+        post_content=post.content if post else None,
+    )

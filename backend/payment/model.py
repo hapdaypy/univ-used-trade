@@ -27,6 +27,8 @@ class TransactionPublic(SQLModel):
     seller_id: int
     amount: int
     created_at: datetime
+    post_title: str | None = None
+    post_content: str | None = None
 
 
 class WalletPublic(SQLModel):
