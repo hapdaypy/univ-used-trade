@@ -89,6 +89,10 @@ const elements = {
   roomList: document.querySelector("#roomList"),
   activeRoomTitle: document.querySelector("#activeRoomTitle"),
   connectionStatus: document.querySelector("#connectionStatus"),
+  chatPurchasePanel: document.querySelector("#chatPurchasePanel"),
+  chatPurchaseTitle: document.querySelector("#chatPurchaseTitle"),
+  chatPurchaseMeta: document.querySelector("#chatPurchaseMeta"),
+  chatPurchaseButton: document.querySelector("#chatPurchaseButton"),
   messageList: document.querySelector("#messageList"),
   messageForm: document.querySelector("#messageForm"),
   messageInput: document.querySelector("#messageInput"),
@@ -164,6 +168,14 @@ function bindEvents() {
   elements.detailBuyButton.addEventListener("click", () => {
     if (!state.selectedPost) return;
     purchasePost(state.selectedPost, elements.detailBuyButton);
+  });
+  elements.chatPurchaseButton.addEventListener("click", () => {
+    const post = findPost(state.activeRoom?.posts_id);
+    if (!post) {
+      setNotice("채팅방의 상품 정보를 찾을 수 없습니다. 게시글 목록을 새로고침해주세요.");
+      return;
+    }
+    purchasePost(post, elements.chatPurchaseButton);
   });
 
   elements.messageForm.addEventListener("submit", (event) => {
@@ -289,6 +301,7 @@ function logout() {
   renderPayment();
   renderMyPage();
   renderRooms([]);
+  renderChatPurchasePanel();
   renderAuthState();
 }
 
@@ -318,8 +331,10 @@ async function loadPosts() {
     state.posts = Array.isArray(posts) ? posts : [];
     saveJson(STORAGE_KEYS.posts, state.posts);
     renderPosts();
+    renderChatPurchasePanel();
   } catch (error) {
     renderPosts();
+    renderChatPurchasePanel();
     setNotice("게시글 API 연결 전까지 저장된 더미 데이터를 표시합니다.");
   }
 }
@@ -567,6 +582,7 @@ async function purchasePost(post, button) {
       state.selectedPost = refreshedPost;
       renderPostDetail(refreshedPost);
     }
+    renderChatPurchasePanel();
     renderMyPage();
     switchView("myPageView");
     setNotice(`구매 완료: ${formatMoney(transaction.amount)}가 가상머니에서 차감되었습니다. 마이페이지에서 구매한 물건을 확인하세요.`);
@@ -579,6 +595,7 @@ async function purchasePost(post, button) {
       state.selectedPost = latestPost;
       renderPostDetail(latestPost);
     }
+    renderChatPurchasePanel();
     renderPosts();
   }
 }
@@ -729,6 +746,7 @@ function openRoom(room) {
   elements.messageList.innerHTML = "";
   elements.messageInput.disabled = false;
   elements.sendButton.disabled = false;
+  renderChatPurchasePanel();
   renderRooms(state.localRooms);
 
   if (room.localOnly) {
@@ -742,6 +760,30 @@ function openRoom(room) {
   }
 
   connectSocket(room);
+}
+
+function renderChatPurchasePanel() {
+  if (!state.activeRoom) {
+    elements.chatPurchasePanel.classList.add("is-hidden");
+    elements.chatPurchaseTitle.textContent = "상품을 선택하세요";
+    elements.chatPurchaseMeta.textContent = "채팅방을 선택하면 거래 상품이 표시됩니다.";
+    return;
+  }
+
+  const post = findPost(state.activeRoom.posts_id);
+  elements.chatPurchasePanel.classList.remove("is-hidden");
+
+  if (!post) {
+    elements.chatPurchaseTitle.textContent = `POST #${state.activeRoom.posts_id}`;
+    elements.chatPurchaseMeta.textContent = "상품 정보를 불러오는 중입니다.";
+    elements.chatPurchaseButton.disabled = true;
+    elements.chatPurchaseButton.textContent = "상품 정보 없음";
+    return;
+  }
+
+  elements.chatPurchaseTitle.textContent = post.title;
+  elements.chatPurchaseMeta.textContent = `${formatMoney(post.price)} · ${getPostStatusLabel(post.status)} · seller ${post.seller_id}`;
+  configurePurchaseButton(elements.chatPurchaseButton, post);
 }
 
 function connectSocket(room) {
