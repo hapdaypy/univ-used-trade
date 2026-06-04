@@ -38,21 +38,26 @@ const defaultPosts = [
 ];
 
 const state = {
-  user: loadJson(STORAGE_KEYS.user, null),
-  token: localStorage.getItem(STORAGE_KEYS.token) || "",
+  user: null,
+  token: "",
   posts: loadJson(STORAGE_KEYS.posts, defaultPosts),
   localRooms: loadJson(STORAGE_KEYS.rooms, []),
   activeRoom: null,
   socket: null,
   wallet: null,
   transactions: [],
+  lastPurchase: null,
+  selectedPost: null,
 };
 
 const elements = {
+  authView: document.querySelector("#authView"),
+  appShell: document.querySelector("#appShell"),
   navTabs: document.querySelectorAll(".nav-tab"),
   views: document.querySelectorAll(".view"),
   loginForm: document.querySelector("#loginForm"),
   signupButton: document.querySelector("#signupButton"),
+  logoutButton: document.querySelector("#logoutButton"),
   nicknameInput: document.querySelector("#nicknameInput"),
   passwordInput: document.querySelector("#passwordInput"),
   currentNickname: document.querySelector("#currentNickname"),
@@ -65,6 +70,17 @@ const elements = {
   postPriceInput: document.querySelector("#postPriceInput"),
   postList: document.querySelector("#postList"),
   postCardTemplate: document.querySelector("#postCardTemplate"),
+  detailTitle: document.querySelector("#detailTitle"),
+  detailPostId: document.querySelector("#detailPostId"),
+  detailName: document.querySelector("#detailName"),
+  detailContent: document.querySelector("#detailContent"),
+  detailPrice: document.querySelector("#detailPrice"),
+  detailMeta: document.querySelector("#detailMeta"),
+  detailStatus: document.querySelector("#detailStatus"),
+  detailPurchaseHelp: document.querySelector("#detailPurchaseHelp"),
+  detailChatButton: document.querySelector("#detailChatButton"),
+  detailBuyButton: document.querySelector("#detailBuyButton"),
+  backToMarketButton: document.querySelector("#backToMarketButton"),
   chatApiInput: document.querySelector("#chatApiInput"),
   roomForm: document.querySelector("#roomForm"),
   roomPostIdInput: document.querySelector("#roomPostIdInput"),
@@ -73,6 +89,10 @@ const elements = {
   roomList: document.querySelector("#roomList"),
   activeRoomTitle: document.querySelector("#activeRoomTitle"),
   connectionStatus: document.querySelector("#connectionStatus"),
+  chatPurchasePanel: document.querySelector("#chatPurchasePanel"),
+  chatPurchaseTitle: document.querySelector("#chatPurchaseTitle"),
+  chatPurchaseMeta: document.querySelector("#chatPurchaseMeta"),
+  chatPurchaseButton: document.querySelector("#chatPurchaseButton"),
   messageList: document.querySelector("#messageList"),
   messageForm: document.querySelector("#messageForm"),
   messageInput: document.querySelector("#messageInput"),
@@ -81,6 +101,9 @@ const elements = {
   walletBalance: document.querySelector("#walletBalance"),
   walletUserId: document.querySelector("#walletUserId"),
   transactionList: document.querySelector("#transactionList"),
+  refreshMyPageButton: document.querySelector("#refreshMyPageButton"),
+  purchaseSummary: document.querySelector("#purchaseSummary"),
+  purchaseList: document.querySelector("#purchaseList"),
 };
 
 init();
@@ -90,6 +113,7 @@ function init() {
   elements.chatApiInput.value = localStorage.getItem(STORAGE_KEYS.chatApiBase) || elements.chatApiInput.value;
 
   bindEvents();
+  renderAuthState();
   renderUser();
   renderPosts();
   renderRooms(state.localRooms);
@@ -121,6 +145,7 @@ function bindEvents() {
   });
 
   elements.signupButton.addEventListener("click", signup);
+  elements.logoutButton.addEventListener("click", logout);
 
   elements.postForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -134,6 +159,24 @@ function bindEvents() {
 
   elements.loadRoomsButton.addEventListener("click", loadRooms);
   elements.refreshPaymentButton.addEventListener("click", loadPaymentSummary);
+  elements.refreshMyPageButton.addEventListener("click", refreshAccountViews);
+  elements.backToMarketButton.addEventListener("click", () => switchView("marketView"));
+  elements.detailChatButton.addEventListener("click", () => {
+    if (!state.selectedPost) return;
+    openChatForPost(state.selectedPost);
+  });
+  elements.detailBuyButton.addEventListener("click", () => {
+    if (!state.selectedPost) return;
+    purchasePost(state.selectedPost, elements.detailBuyButton);
+  });
+  elements.chatPurchaseButton.addEventListener("click", () => {
+    const post = findPost(state.activeRoom?.posts_id);
+    if (!post) {
+      setNotice("채팅방의 상품 정보를 찾을 수 없습니다. 게시글 목록을 새로고침해주세요.");
+      return;
+    }
+    purchasePost(post, elements.chatPurchaseButton);
+  });
 
   elements.messageForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -156,6 +199,16 @@ function switchView(viewId) {
   if (viewId === "paymentView") {
     loadPaymentSummary();
   }
+
+  if (viewId === "myPageView") {
+    refreshAccountViews();
+  }
+}
+
+function renderAuthState() {
+  const isAuthenticated = Boolean(state.token && state.user);
+  elements.authView.classList.toggle("is-hidden", isAuthenticated);
+  elements.appShell.classList.toggle("is-hidden", !isAuthenticated);
 }
 
 async function signup() {
@@ -196,7 +249,10 @@ async function login() {
     state.token = token.access_token;
     localStorage.setItem(STORAGE_KEYS.token, state.token);
     await loadCurrentUser();
+    await loadPosts();
     await loadPaymentSummary();
+    renderAuthState();
+    switchView("marketView");
     setNotice("로그인되었습니다. 게시글 작성과 채팅을 사용할 수 있습니다.");
   } catch (error) {
     setNotice(`로그인 실패: ${error.message}`);
@@ -213,14 +269,40 @@ async function loadCurrentUser() {
     saveJson(STORAGE_KEYS.user, user);
     renderUser();
     renderPosts();
+    renderAuthState();
   } catch (error) {
     state.token = "";
     localStorage.removeItem(STORAGE_KEYS.token);
     state.wallet = null;
     state.transactions = [];
+    state.lastPurchase = null;
     renderUser();
     renderPayment();
+    renderMyPage();
+    renderAuthState();
   }
+}
+
+function logout() {
+  closeSocket();
+  state.user = null;
+  state.token = "";
+  state.wallet = null;
+  state.transactions = [];
+  state.localRooms = [];
+  state.activeRoom = null;
+  state.selectedPost = null;
+  state.lastPurchase = null;
+  localStorage.removeItem(STORAGE_KEYS.user);
+  localStorage.removeItem(STORAGE_KEYS.token);
+  localStorage.removeItem(STORAGE_KEYS.rooms);
+  elements.passwordInput.value = "";
+  renderUser();
+  renderPayment();
+  renderMyPage();
+  renderRooms([]);
+  renderChatPurchasePanel();
+  renderAuthState();
 }
 
 function getCredentials() {
@@ -249,8 +331,10 @@ async function loadPosts() {
     state.posts = Array.isArray(posts) ? posts : [];
     saveJson(STORAGE_KEYS.posts, state.posts);
     renderPosts();
+    renderChatPurchasePanel();
   } catch (error) {
     renderPosts();
+    renderChatPurchasePanel();
     setNotice("게시글 API 연결 전까지 저장된 더미 데이터를 표시합니다.");
   }
 }
@@ -276,15 +360,39 @@ function renderPosts() {
     card.querySelector(".post-status").textContent = getPostStatusLabel(post.status);
     card.querySelector(".post-status").classList.toggle("is-sold", post.status === "sold");
     card.querySelector(".open-chat-button").addEventListener("click", () => {
-      switchView("chatView");
-      elements.roomPostIdInput.value = post.id;
-      elements.roomBuyerIdInput.value = state.user?.id || "";
+      openChatForPost(post);
     });
+    card.querySelector(".detail-button").addEventListener("click", () => openPostDetail(post));
     const buyButton = card.querySelector(".buy-button");
-    buyButton.disabled = !state.token || post.status === "sold" || Number(post.seller_id) === Number(state.user?.id);
-    buyButton.addEventListener("click", () => purchasePost(post));
+    configurePurchaseButton(buyButton, post);
+    buyButton.addEventListener("click", () => purchasePost(post, buyButton));
     elements.postList.append(card);
   });
+}
+
+function openPostDetail(post) {
+  state.selectedPost = post;
+  renderPostDetail(post);
+  switchView("itemDetailView");
+}
+
+function renderPostDetail(post) {
+  elements.detailTitle.textContent = post.title;
+  elements.detailPostId.textContent = `POST #${post.id}`;
+  elements.detailName.textContent = post.title;
+  elements.detailContent.textContent = post.content || "내용 없음";
+  elements.detailPrice.textContent = formatMoney(post.price || 0);
+  elements.detailMeta.textContent = `seller_id ${post.seller_id} · ${formatDate(post.created_at)}`;
+  elements.detailStatus.textContent = getPostStatusLabel(post.status);
+  elements.detailStatus.classList.toggle("is-sold", post.status === "sold");
+  configurePurchaseButton(elements.detailBuyButton, post);
+  elements.detailPurchaseHelp.textContent = getPurchaseHelpText(post);
+}
+
+function openChatForPost(post) {
+  switchView("chatView");
+  elements.roomPostIdInput.value = post.id;
+  elements.roomBuyerIdInput.value = state.user?.id || "";
 }
 
 async function createPost() {
@@ -341,9 +449,11 @@ async function loadPaymentSummary() {
     state.transactions = Array.isArray(transactions) ? transactions : [];
     renderUser();
     renderPayment();
+    renderMyPage();
   } catch (error) {
     setNotice(`결제 정보 조회 실패: ${error.message}`);
     renderPayment();
+    renderMyPage();
   }
 }
 
@@ -373,13 +483,89 @@ function renderPayment() {
   });
 }
 
-async function purchasePost(post) {
-  if (!state.token) {
-    setNotice("구매하려면 먼저 로그인해주세요.");
+function renderMyPage() {
+  const purchases = state.transactions.filter((transaction) => Number(transaction.buyer_id) === Number(state.user?.id));
+  const latestPurchase = state.lastPurchase || getLatestPurchase(purchases);
+  elements.purchaseList.innerHTML = "";
+
+  if (latestPurchase) {
+    const post = findPost(latestPurchase.post_id);
+    elements.purchaseSummary.innerHTML = `
+      <p class="eyebrow">최근 결제 완료</p>
+      <strong>${escapeHtml(getTransactionPostTitle(latestPurchase, post))}</strong>
+      <span>${formatMoney(latestPurchase.amount)} 결제 · 현재 잔액 ${state.wallet ? formatMoney(state.wallet.money) : "조회 전"}</span>
+      <div class="receipt-meta">
+        <span>transaction #${latestPurchase.id}</span>
+        <span>post #${latestPurchase.post_id}</span>
+        <span>seller ${latestPurchase.seller_id}</span>
+        <span>${formatDate(latestPurchase.created_at)}</span>
+      </div>
+    `;
+  } else {
+    elements.purchaseSummary.innerHTML = `
+      <p class="eyebrow">최근 구매</p>
+      <strong>아직 구매 내역이 없습니다.</strong>
+      <span>구매가 완료되면 이곳에 표시됩니다.</span>
+    `;
+  }
+
+  if (!purchases.length) {
+    const empty = document.createElement("p");
+    empty.className = "eyebrow";
+    empty.textContent = "구매한 물건이 없습니다.";
+    elements.purchaseList.append(empty);
     return;
   }
 
+  purchases.forEach((transaction) => {
+    const post = findPost(transaction.post_id);
+    const item = document.createElement("article");
+    item.className = "purchase-item";
+    item.innerHTML = `
+      <strong>${escapeHtml(getTransactionPostTitle(transaction, post))}</strong>
+      <span>${escapeHtml(getTransactionPostContent(transaction, post))}</span>
+      <div>결제 ${formatMoney(transaction.amount)} · transaction #${transaction.id} · seller ${transaction.seller_id} · ${formatDate(transaction.created_at)}</div>
+    `;
+    elements.purchaseList.append(item);
+  });
+}
+
+function getTransactionPostTitle(transaction, post) {
+  return transaction.post_title || post?.title || `POST #${transaction.post_id}`;
+}
+
+function getTransactionPostContent(transaction, post) {
+  return transaction.post_content || post?.content || "상품 정보 없음";
+}
+
+function getLatestPurchase(purchases) {
+  return [...purchases].sort((a, b) => {
+    const dateDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    return dateDiff || Number(b.id || 0) - Number(a.id || 0);
+  })[0] || null;
+}
+
+async function refreshAccountViews() {
+  await Promise.all([loadPosts(), loadPaymentSummary()]);
+}
+
+async function purchasePost(post, button) {
+  const blockReason = getPurchaseBlockReason(post);
+  if (blockReason) {
+    setNotice(blockReason);
+    if (state.selectedPost?.id === post.id) {
+      renderPostDetail(post);
+    }
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "구매 처리 중";
+
   try {
+    await ensureChatRoomForPurchase(post).catch((error) => {
+      setConnectionStatus(`채팅방 생성 대기: ${error.message}`, "error");
+    });
     const transaction = await apiRequest("/payment/transactions", {
       method: "POST",
       headers: {
@@ -389,11 +575,87 @@ async function purchasePost(post) {
       body: JSON.stringify({ post_id: post.id }),
     });
 
-    setNotice(`구매 완료: ${formatMoney(transaction.amount)} 결제되었습니다.`);
-    await Promise.all([loadPosts(), loadPaymentSummary()]);
+    state.lastPurchase = transaction;
+    await Promise.all([loadPosts(), loadPaymentSummary(), loadRooms()]);
+    const refreshedPost = findPost(post.id);
+    if (refreshedPost && state.selectedPost?.id === refreshedPost.id) {
+      state.selectedPost = refreshedPost;
+      renderPostDetail(refreshedPost);
+    }
+    renderChatPurchasePanel();
+    renderMyPage();
+    switchView("myPageView");
+    setNotice(`구매 완료: ${formatMoney(transaction.amount)}가 가상머니에서 차감되었습니다. 마이페이지에서 구매한 물건을 확인하세요.`);
   } catch (error) {
     setNotice(`구매 실패: ${error.message}`);
+  } finally {
+    const latestPost = findPost(post.id) || post;
+    configurePurchaseButton(button, latestPost);
+    if (state.selectedPost?.id === latestPost.id) {
+      state.selectedPost = latestPost;
+      renderPostDetail(latestPost);
+    }
+    renderChatPurchasePanel();
+    renderPosts();
   }
+}
+
+function configurePurchaseButton(button, post) {
+  const blockReason = getPurchaseBlockReason(post);
+  const isSold = post.status === "sold";
+  button.disabled = isSold;
+  button.textContent = blockReason ? getBlockedPurchaseButtonText(post) : "구매하기";
+  button.title = blockReason || "가상머니로 결제합니다.";
+}
+
+function getPurchaseBlockReason(post) {
+  if (!state.token) {
+    return "구매하려면 먼저 로그인해주세요.";
+  }
+  if (post.status === "sold") {
+    return "이미 판매 완료된 상품입니다.";
+  }
+  if (Number(post.seller_id) === Number(state.user?.id)) {
+    return "본인이 등록한 상품은 구매할 수 없습니다. 발표 시연은 다른 계정으로 로그인해서 진행해주세요.";
+  }
+  return "";
+}
+
+function getBlockedPurchaseButtonText(post) {
+  if (!state.token) return "로그인 필요";
+  if (post.status === "sold") return "판매 완료";
+  if (Number(post.seller_id) === Number(state.user?.id)) return "내 상품";
+  return "구매 불가";
+}
+
+function getPurchaseHelpText(post) {
+  const blockReason = getPurchaseBlockReason(post);
+  if (blockReason) return blockReason;
+  return "구매하기를 누르면 채팅방 생성 후 가상머니가 차감되고 마이페이지에 구매 내역이 저장됩니다.";
+}
+
+async function ensureChatRoomForPurchase(post) {
+  const existingRoom = state.localRooms.find((room) => {
+    return Number(room.posts_id) === Number(post.id) && Number(room.buyer_id) === Number(state.user?.id) && !room.localOnly;
+  });
+
+  if (existingRoom) {
+    return existingRoom;
+  }
+
+  const response = await chatRequest("/api/chat/rooms", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ posts_id: post.id, buyer_id: state.user.id }),
+  });
+
+  if (!response.success) {
+    throw new Error(response.message || "채팅방 생성 실패");
+  }
+
+  upsertLocalRoom(response.data);
+  renderRooms(state.localRooms);
+  return response.data;
 }
 
 async function createRoomFromForm() {
@@ -484,6 +746,7 @@ function openRoom(room) {
   elements.messageList.innerHTML = "";
   elements.messageInput.disabled = false;
   elements.sendButton.disabled = false;
+  renderChatPurchasePanel();
   renderRooms(state.localRooms);
 
   if (room.localOnly) {
@@ -497,6 +760,30 @@ function openRoom(room) {
   }
 
   connectSocket(room);
+}
+
+function renderChatPurchasePanel() {
+  if (!state.activeRoom) {
+    elements.chatPurchasePanel.classList.add("is-hidden");
+    elements.chatPurchaseTitle.textContent = "상품을 선택하세요";
+    elements.chatPurchaseMeta.textContent = "채팅방을 선택하면 거래 상품이 표시됩니다.";
+    return;
+  }
+
+  const post = findPost(state.activeRoom.posts_id);
+  elements.chatPurchasePanel.classList.remove("is-hidden");
+
+  if (!post) {
+    elements.chatPurchaseTitle.textContent = `POST #${state.activeRoom.posts_id}`;
+    elements.chatPurchaseMeta.textContent = "상품 정보를 불러오는 중입니다.";
+    elements.chatPurchaseButton.disabled = true;
+    elements.chatPurchaseButton.textContent = "상품 정보 없음";
+    return;
+  }
+
+  elements.chatPurchaseTitle.textContent = post.title;
+  elements.chatPurchaseMeta.textContent = `${formatMoney(post.price)} · ${getPostStatusLabel(post.status)} · seller ${post.seller_id}`;
+  configurePurchaseButton(elements.chatPurchaseButton, post);
 }
 
 function connectSocket(room) {
@@ -619,7 +906,11 @@ function getChatApiBase() {
 }
 
 function findSellerId(postsId) {
-  return state.posts.find((post) => Number(post.id) === Number(postsId))?.seller_id ?? null;
+  return findPost(postsId)?.seller_id ?? null;
+}
+
+function findPost(postsId) {
+  return state.posts.find((post) => Number(post.id) === Number(postsId)) ?? null;
 }
 
 function upsertLocalRoom(room) {

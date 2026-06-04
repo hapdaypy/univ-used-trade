@@ -67,6 +67,44 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(20, 122, 92, 0.12);
 }
 
+.is-hidden {
+  display: none !important;
+}
+
+.auth-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-panel {
+  width: min(100%, 460px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 30px;
+}
+
+.auth-brand {
+  color: var(--text);
+  margin-bottom: 28px;
+}
+
+.auth-brand span {
+  color: var(--muted);
+}
+
+.auth-panel h1 {
+  margin: 0 0 20px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 10px;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -133,6 +171,16 @@ textarea:focus {
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   padding: 16px;
+}
+
+.logout-button {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  margin-top: 14px;
+}
+
+.logout-button:hover {
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .main {
@@ -300,8 +348,19 @@ textarea:focus {
 }
 
 .open-chat-button,
+.detail-button,
 .buy-button {
   width: 100%;
+}
+
+.detail-button {
+  background: #eef4f1;
+  color: var(--text);
+  margin-top: 8px;
+}
+
+.detail-button:hover {
+  background: #dbe9e2;
 }
 
 .buy-button {
@@ -382,7 +441,7 @@ textarea:focus {
 
 .chat-panel {
   display: grid;
-  grid-template-rows: auto minmax(360px, 58vh) auto;
+  grid-template-rows: auto auto minmax(320px, 52vh) auto;
   padding: 0;
 }
 
@@ -409,6 +468,27 @@ textarea:focus {
 .connection.is-error {
   background: #fde8e6;
   color: var(--danger);
+}
+
+.chat-purchase {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  background: #fffaf0;
+  padding: 14px 18px;
+}
+
+.chat-purchase strong,
+.chat-purchase span {
+  display: block;
+}
+
+.chat-purchase span {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
 }
 
 .message-list {
@@ -459,32 +539,105 @@ textarea:focus {
   gap: 18px;
 }
 
-.payment-layout {
+.detail-panel {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1fr);
+  gap: 22px;
+}
+
+.detail-visual {
+  min-height: 360px;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(20, 122, 92, 0.85), rgba(240, 180, 76, 0.78)),
+    repeating-linear-gradient(45deg, transparent 0 14px, rgba(255, 255, 255, 0.18) 14px 28px);
+}
+
+.detail-body {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.detail-body h3 {
+  font-size: 28px;
+  margin: 0;
+}
+
+.detail-body p {
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.detail-price {
+  font-size: 30px;
+}
+
+.purchase-help {
+  border: 1px solid #d8e7df;
+  border-radius: 8px;
+  background: #f4faf7;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.detail-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.payment-layout,
+.my-page-layout {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
   gap: 18px;
 }
 
-.wallet-panel {
+.wallet-panel,
+.purchase-summary {
   align-self: start;
 }
 
-.wallet-panel strong {
+.wallet-panel strong,
+.purchase-summary strong {
   display: block;
   font-size: 28px;
   margin-bottom: 8px;
 }
 
-.wallet-panel span {
+.wallet-panel span,
+.purchase-summary span {
   color: var(--muted);
 }
 
-.transaction-list {
+.receipt-meta {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.receipt-meta span {
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 7px 9px;
+}
+
+.transaction-list,
+.purchase-list {
   display: grid;
   gap: 10px;
 }
 
-.transaction-item {
+.transaction-item,
+.purchase-item {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-muted);
@@ -493,11 +646,16 @@ textarea:focus {
 
 .transaction-item strong,
 .transaction-item span,
-.transaction-item time {
+.transaction-item time,
+.purchase-item strong,
+.purchase-item span,
+.purchase-item div {
   display: block;
 }
 
-.transaction-item span {
+.transaction-item span,
+.purchase-item span,
+.purchase-item div {
   color: var(--muted);
   font-size: 13px;
   margin-top: 5px;
@@ -524,8 +682,10 @@ textarea:focus {
   }
 
   .layout-grid,
+  .detail-panel,
   .chat-layout,
   .payment-layout,
+  .my-page-layout,
   .report-grid {
     grid-template-columns: 1fr;
   }
