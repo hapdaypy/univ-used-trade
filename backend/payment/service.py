@@ -85,4 +85,5 @@ def to_transaction_public(transaction: Transaction, post: Post | None) -> Transa
         created_at=transaction.created_at,
         post_title=post.title if post else None,
         post_content=post.content if post else None,
+        post_trade_location=post.trade_location if post else None,
     )

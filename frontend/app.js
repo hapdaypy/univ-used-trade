@@ -14,6 +14,7 @@ const defaultPosts = [
     title: "운영체제 전공책 판매",
     content: "필기 조금 있고 상태 좋습니다. 공학관 앞에서 거래 가능해요.",
     price: 18000,
+    trade_location: "광개토관",
     status: "available",
     created_at: "2026-05-25T09:00:00",
   },
@@ -23,6 +24,7 @@ const defaultPosts = [
     title: "무선 키보드",
     content: "프로젝트 기간에만 사용했습니다. 배터리 포함입니다.",
     price: 25000,
+    trade_location: "학술정보원",
     status: "available",
     created_at: "2026-05-25T09:30:00",
   },
@@ -32,6 +34,7 @@ const defaultPosts = [
     title: "기숙사용 미니 선풍기",
     content: "소음 적고 책상 위에 두기 좋습니다.",
     price: 12000,
+    trade_location: "헹복기숙사",
     status: "sold",
     created_at: "2026-05-25T10:00:00",
   },
@@ -68,6 +71,7 @@ const elements = {
   postTitleInput: document.querySelector("#postTitleInput"),
   postContentInput: document.querySelector("#postContentInput"),
   postPriceInput: document.querySelector("#postPriceInput"),
+  postLocationInput: document.querySelector("#postLocationInput"),
   postList: document.querySelector("#postList"),
   postCardTemplate: document.querySelector("#postCardTemplate"),
   detailTitle: document.querySelector("#detailTitle"),
@@ -75,6 +79,7 @@ const elements = {
   detailName: document.querySelector("#detailName"),
   detailContent: document.querySelector("#detailContent"),
   detailPrice: document.querySelector("#detailPrice"),
+  detailTradeLocation: document.querySelector("#detailTradeLocation"),
   detailMeta: document.querySelector("#detailMeta"),
   detailStatus: document.querySelector("#detailStatus"),
   detailPurchaseHelp: document.querySelector("#detailPurchaseHelp"),
@@ -356,6 +361,7 @@ function renderPosts() {
     card.querySelector("h3").textContent = post.title;
     card.querySelector("p").textContent = post.content || "내용 없음";
     card.querySelector(".post-price").textContent = formatMoney(post.price || 0);
+    card.querySelector(".trade-location").textContent = getTradeLocationLabel(post);
     card.querySelector(".post-meta").textContent = `seller_id ${post.seller_id} · ${formatDate(post.created_at)}`;
     card.querySelector(".post-status").textContent = getPostStatusLabel(post.status);
     card.querySelector(".post-status").classList.toggle("is-sold", post.status === "sold");
@@ -382,6 +388,7 @@ function renderPostDetail(post) {
   elements.detailName.textContent = post.title;
   elements.detailContent.textContent = post.content || "내용 없음";
   elements.detailPrice.textContent = formatMoney(post.price || 0);
+  elements.detailTradeLocation.textContent = getTradeLocationLabel(post);
   elements.detailMeta.textContent = `seller_id ${post.seller_id} · ${formatDate(post.created_at)}`;
   elements.detailStatus.textContent = getPostStatusLabel(post.status);
   elements.detailStatus.classList.toggle("is-sold", post.status === "sold");
@@ -405,10 +412,16 @@ async function createPost() {
     title: elements.postTitleInput.value.trim(),
     content: elements.postContentInput.value.trim(),
     price: Number(elements.postPriceInput.value),
+    trade_location: elements.postLocationInput.value,
   };
 
   if (!payload.price || payload.price < 1) {
     setNotice("가격은 1원 이상으로 입력해주세요.");
+    return;
+  }
+
+  if (!payload.trade_location) {
+    setNotice("교내 교환 장소를 선택해주세요.");
     return;
   }
 
@@ -476,6 +489,7 @@ function renderPayment() {
     item.className = "transaction-item";
     item.innerHTML = `
       <strong>${isBuyer ? "구매" : "판매"} · ${formatMoney(transaction.amount)}</strong>
+      <span>${escapeHtml(getTransactionTradeLocation(transaction))}</span>
       <span>post ${transaction.post_id} · buyer ${transaction.buyer_id} · seller ${transaction.seller_id}</span>
       <time>${formatDate(transaction.created_at)}</time>
     `;
@@ -494,6 +508,7 @@ function renderMyPage() {
       <p class="eyebrow">최근 결제 완료</p>
       <strong>${escapeHtml(getTransactionPostTitle(latestPurchase, post))}</strong>
       <span>${formatMoney(latestPurchase.amount)} 결제 · 현재 잔액 ${state.wallet ? formatMoney(state.wallet.money) : "조회 전"}</span>
+      <span>${escapeHtml(getTransactionTradeLocation(latestPurchase, post))}</span>
       <div class="receipt-meta">
         <span>transaction #${latestPurchase.id}</span>
         <span>post #${latestPurchase.post_id}</span>
@@ -524,6 +539,7 @@ function renderMyPage() {
     item.innerHTML = `
       <strong>${escapeHtml(getTransactionPostTitle(transaction, post))}</strong>
       <span>${escapeHtml(getTransactionPostContent(transaction, post))}</span>
+      <span>${escapeHtml(getTransactionTradeLocation(transaction, post))}</span>
       <div>결제 ${formatMoney(transaction.amount)} · transaction #${transaction.id} · seller ${transaction.seller_id} · ${formatDate(transaction.created_at)}</div>
     `;
     elements.purchaseList.append(item);
@@ -536,6 +552,10 @@ function getTransactionPostTitle(transaction, post) {
 
 function getTransactionPostContent(transaction, post) {
   return transaction.post_content || post?.content || "상품 정보 없음";
+}
+
+function getTransactionTradeLocation(transaction, post = null) {
+  return `교내 교환 장소: ${transaction.post_trade_location || post?.trade_location || "미정"}`;
 }
 
 function getLatestPurchase(purchases) {
@@ -782,7 +802,7 @@ function renderChatPurchasePanel() {
   }
 
   elements.chatPurchaseTitle.textContent = post.title;
-  elements.chatPurchaseMeta.textContent = `${formatMoney(post.price)} · ${getPostStatusLabel(post.status)} · seller ${post.seller_id}`;
+  elements.chatPurchaseMeta.textContent = `${formatMoney(post.price)} · ${getPostStatusLabel(post.status)} · ${getTradeLocationLabel(post)} · seller ${post.seller_id}`;
   configurePurchaseButton(elements.chatPurchaseButton, post);
 }
 
@@ -967,6 +987,10 @@ function formatMoney(value) {
 
 function getPostStatusLabel(status) {
   return status === "sold" ? "판매 완료" : "판매 중";
+}
+
+function getTradeLocationLabel(post) {
+  return `교내 교환 장소: ${post.trade_location || "미정"}`;
 }
 
 function escapeHtml(value) {
