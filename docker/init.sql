@@ -19,6 +19,7 @@ CREATE TABLE posts
   title      VARCHAR(255) NOT NULL,
   content    VARCHAR(255),
   price      INT          NOT NULL,
+  trade_location VARCHAR(100) NOT NULL,
   status     VARCHAR(50)  NOT NULL DEFAULT 'available',
   created_at TIMESTAMP    NOT NULL DEFAULT NOW()
 );
