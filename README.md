@@ -269,3 +269,7 @@ python -m http.server 5500
 - 프론트엔드 기본 Chat API 주소: `http://localhost:8001`
 - API 주소는 화면 상단 입력값을 통해 변경할 수 있습니다.
 - API 연결에 실패하면 일부 화면은 localStorage 기반 fallback 데이터를 표시합니다.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
