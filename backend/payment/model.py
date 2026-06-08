@@ -29,6 +29,7 @@ class TransactionPublic(SQLModel):
     created_at: datetime
     post_title: str | None = None
     post_content: str | None = None
+    post_trade_location: str | None = None
 
 
 class WalletPublic(SQLModel):

@@ -87,11 +87,28 @@
               </label>
               <label>
                 내용
-                <textarea id="postContentInput" rows="5" placeholder="상품 상태, 가격, 거래 장소를 적어주세요." required></textarea>
+                <textarea id="postContentInput" rows="5" placeholder="상품 상태를 적어주세요." required></textarea>
               </label>
               <label>
                 가격
                 <input id="postPriceInput" type="number" min="1" step="100" placeholder="예: 15000" required />
+              </label>
+              <label>
+                교내 교환 장소
+                <select id="postLocationInput" required>
+                  <option value="">장소 선택</option>
+                  <option value="학술정보원">학술정보원</option>
+                  <option value="영실관">영실관</option>
+                  <option value="충무관">충무관</option>
+                  <option value="대양센터">대양센터</option>
+                  <option value="대양홀">대양홀</option>
+                  <option value="헹복기숙사">헹복기숙사</option>
+                  <option value="군자관">군자관</option>
+                  <option value="집현관">집현관</option>
+                  <option value="용덕관">용덕관</option>
+                  <option value="이당관">이당관</option>
+                  <option value="광개토관">광개토관</option>
+                </select>
               </label>
               <button type="submit">등록</button>
             </form>
@@ -116,6 +133,7 @@
               <h3 id="detailName"></h3>
               <p id="detailContent"></p>
               <strong class="detail-price" id="detailPrice"></strong>
+              <div class="trade-location" id="detailTradeLocation"></div>
               <div class="post-meta" id="detailMeta"></div>
               <span class="post-status" id="detailStatus"></span>
               <p class="purchase-help" id="detailPurchaseHelp"></p>
@@ -250,6 +268,7 @@
                 <li>지갑 조회 및 결제 API 연동</li>
                 <li>거래 내역 조회 UI</li>
                 <li>마이페이지 구매 내역 UI</li>
+                <li>교내 교환 장소 선택 및 거래 화면 표시</li>
               </ul>
             </article>
             <article class="panel">
@@ -275,6 +294,7 @@
           <h3></h3>
           <p></p>
           <div class="post-price"></div>
+          <div class="trade-location"></div>
           <div class="post-meta"></div>
           <span class="post-status"></span>
           <button type="button" class="open-chat-button">채팅하기</button>
